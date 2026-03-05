@@ -1,0 +1,27 @@
+version: 2
+
+sources:
+  - name: airbnb_raw
+    description: Raw data from Airbnb's data warehouse
+    database: airbnb_db
+    schema: staging
+    tables:
+      - name: raw_listings
+        description: Raw listing data from Airbnb
+        columns:
+          - name: listing_id
+            tests:
+              - not_null
+      - name: raw_bookings
+        description: Raw booking data from Airbnb
+        columns:
+          - name: booking_id
+            tests:
+              - not_null
+      - name: raw_hosts
+        description: Raw host data from Airbnb 
+        columns:
+          - name: host_id
+            tests:
+              - not_null
+              

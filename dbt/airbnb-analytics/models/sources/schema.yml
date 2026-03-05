@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: fact
+    columns:
+      - name: booking_id
+        description: "The primary key for this booking."
+        tests:
+          - unique
+          - not_null
+
+      - name: total_booking_amount
+        description: "The total price paid by the guest."
+        tests:
+          - not_null
+
+      - name: listing_id
+        description: "Foreign key to the listings dimension."
+        tests:
+          - not_null
+          # This ensures every booking is tied to a real, existing listing!
+          - relationships:
+              to: ref('dim_listings') 
+              field: listing_id
+              
+      - name: host_id
+        description: "Foreign key to the hosts dimension."
+        tests:
+          - not_null
+          # This ensures every booking is tied to a real, existing host!
+          - relationships:
+              to: ref('dim_hosts') 
+              field: host_id

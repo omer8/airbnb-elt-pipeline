@@ -1,0 +1,4 @@
+listing_id,host_id,property_type,room_type,city,country,accommodates,bedrooms,bathrooms,price_per_night,created_at
+1,150,House,Entire home,West Lisafort,Malta,3,1,2,150,2026-03-05 10:00:00
+2,91,Apartment,Entire home,North Cherylberg,Western Sahara,1,2,3,140,2026-03-05 10:00:00
+501,1,House,Entire home,New Airflow City,Egypt,4,2,2,200,2026-03-05 10:00:00

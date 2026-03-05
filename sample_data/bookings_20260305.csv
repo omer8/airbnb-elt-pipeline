@@ -1,0 +1,4 @@
+booking_id,listing_id,booking_date,nights_booked,booking_amount,cleaning_fee,service_fee,booking_status,created_at
+ef0bd262-f88d-477f-aeba-9c69cc72c051,379,2024-12-25,3,591,70,23,cancelled,2026-03-05 10:00:00
+0263bc02-f07d-4dbd-aab6-8bec4b58dfc6,501,2026-03-05,5,1000,100,50,confirmed,2026-03-05 10:00:00
+2d691ae7-aacc-4700-9747-75fc9b7c1df1,1,2026-03-05,2,300,50,20,confirmed,2026-03-05 10:00:00

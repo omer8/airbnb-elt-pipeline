@@ -1,0 +1,44 @@
+name: 'airbnb_dbt'
+version: '1.0.0'
+
+profile: 'airbnb_dbt'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:         
+  - "target"
+  - "dbt_packages"
+
+models:
+  airbnb_dbt:
+  
+    bronze:
+      +schema: bronze
+      +tags: ['bronze']
+      +materialized: incremental
+
+    silver:
+      +schema: silver
+      +tags: ['silver']
+      +materialized: incremental
+
+    gold:
+      dimensions: 
+        +schema: gold
+        +tags: ['gold', 'dimension']
+        +materialized: incremental
+
+      facts:
+        +schema: gold
+        +tags: ['gold', 'fact']
+        +materialized: incremental
+
+    marts:
+      +schema: marts
+      +tags: ['marts']
+      +materialized: table

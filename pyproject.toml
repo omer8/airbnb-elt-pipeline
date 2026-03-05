@@ -1,0 +1,29 @@
+[project]
+name = "airbnb-elt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    # Airflow Core
+    "apache-airflow",
+
+    # Airflow Providers
+    "apache-airflow-providers-snowflake",
+    "apache-airflow-providers-amazon",
+    "apache-airflow-providers-dbt-cloud",
+    "apache-airflow-providers-smtp",
+    "apache-airflow-providers-slack",
+    "apache-airflow-providers-http",
+    "apache-airflow-providers-postgres",
+    "apache-airflow-providers-common-sql",
+    "apache-airflow-providers-docker",
+    "apache-airflow-providers-cncf-kubernetes",
+
+    # dbt
+    "dbt-core",
+    "dbt-snowflake",
+
+    # Cosmos
+    "astronomer-cosmos[dbt-snowflake]"
+]

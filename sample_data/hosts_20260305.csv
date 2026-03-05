@@ -1,0 +1,4 @@
+host_id,host_name,host_since,is_superhost,response_rate,created_at
+1,Timothy Parker,2018-03-20,True,99,2026-03-05 10:00:00
+2,Hannah Evans,2024-01-01,False,100,2026-03-05 10:00:00
+201,Omar Engineer,2026-03-05,True,100,2026-03-05 10:00:00
