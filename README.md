@@ -24,58 +24,42 @@ An end-to-end ELT pipeline that ingests Airbnb raw data from **Amazon S3** into 
 ## 🔄 Pipeline Flow
 
 ```mermaid
-flowchart TD
-    START([🚀 Start]) --> ING
+graph TD
+    subgraph "Data Pipeline Architecture"
+        
+        %% Nodes
+        A[🌐 Airbnb Data Source <br/> CSVs / API] 
+        B[🐍 Python Scripts <br/> Data Extraction]
+        C[(🪣 AWS S3 <br/> Data Lake / Storage)]
+        D[⏱️ Apache Airflow <br/> Central Orchestration]
+        E[(🐘 PostgreSQL / Snowflake <br/> Data Warehouse)]
+        F[🛠️ dbt / SQL <br/> Data Transformation]
+        G[📊 Superset / Metabase <br/> Visualization]
 
-    subgraph ING [" 📥 Data Ingestion (Parallel)"]
-        direction TB
-        WL[S3 Sensor: Listings] --> CL[COPY → raw_listings]
-        WH[S3 Sensor: Hosts]    --> CH[COPY → raw_hosts]
-        WB[S3 Sensor: Bookings] --> CB[COPY → raw_bookings]
+        %% Data Flow
+        A -->|Extract| B
+        B -->|Upload Raw Data| C
+        C -->|Copy Into| E
+        E -->|Read Raw Tables| F
+        F -->|Write Clean/Fact Tables| E
+        E -->|Query Data| G
+
+        %% Orchestration Flow (Dotted lines like in your reference)
+        D -.->|Triggers| B
+        D -.->|Monitors| C
+        D -.->|Triggers Load| E
+        D -.->|Executes Models| F
+        
     end
-
-    ING --> TS[🧪 Test Sources\ndbt test source:*]
-
-    TS --> TRANS
-
-    subgraph TRANS [" 🔄 dbt Transformations (Cosmos)"]
-        direction TB
-        B[🥉 Bronze\nRaw cleaning & typing]
-        S[🥈 Silver\nBusiness rules & deduplication]
-        G[🥇 Gold\nDimensions + Facts]
-        M[🏪 Marts\nOBTs for reporting]
-        B --> S --> G --> M
-    end
-
-    TRANS --> SNAP
-
-    subgraph SNAP [" 📸 Snapshots — SCD Type 2"]
-        direction TB
-        SL[snapshot_listings]
-        SH[snapshot_hosts]
-        SB[snapshot_bookings]
-    end
-
-    SNAP --> DT[🧪 Test Models\ndbt test exclude:source:*]
-
-    DT --> GFT[🔍 Get Failed Task]
-
-    GFT --> SUCCESS[✅ Success Email]
-    GFT --> FAILURE[❌ Failure Email]
-
-    SUCCESS --> END([🏁 End])
-    FAILURE --> END
-
-    style START fill:#4CAF50,color:#fff
-    style END   fill:#4CAF50,color:#fff
-    style SUCCESS fill:#4CAF50,color:#fff
-    style FAILURE fill:#f44336,color:#fff
-    style ING   fill:#1565C0,color:#fff
-    style TRANS fill:#6A1B9A,color:#fff
-    style SNAP  fill:#E65100,color:#fff
-    style TS    fill:#00695C,color:#fff
-    style DT    fill:#00695C,color:#fff
-    style GFT   fill:#37474F,color:#fff
+    
+    %% Styling to match the visual vibe
+    classDef storage fill:#336791,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef processing fill:#e25a1c,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef orchestration fill:#017CEE,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    class C,E storage;
+    class F processing;
+    class D orchestration;
 ```
 
 ---
