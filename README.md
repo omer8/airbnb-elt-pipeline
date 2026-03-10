@@ -1,15 +1,15 @@
 # 🏠 Airbnb ELT Pipeline
-This pipeline ingests Airbnb data from **Amazon S3** into **Snowflake**, transforms it through a Medallion Architecture using **dbt**, and orchestrates everything with **Apache Airflow** and **Astronomer Cosmos**.
 
+An end-to-end ELT pipeline that ingests Airbnb raw data from **Amazon S3** into **Snowflake**, transforms it through a medallion architecture using **dbt**, and orchestrates everything with **Apache Airflow** + **Astronomer Cosmos**.
+
+---
 ## Table of Contents
 * [Tech Stack](#tech-stack)
 * [Architecture](#architecture)
-* [Pipeline DAG](#pipeline-dag)
-* [Directories](#directories)
+* [🗂️ Project Structure](#🗂️-project-structure)
+* [Pipeline Flow](#pipeline-flow)
 * [Setup Instructions](#setup-instructions)
 * [Steps to Run](#steps-to-run)
-* [Notes](#notes)
-
 ---
 
 ## Tech-Stack
@@ -47,61 +47,39 @@ This pipeline ingests Airbnb data from **Amazon S3** into **Snowflake**, transfo
 
 ---
 
-## Pipeline DAG
+## 🗂️ Project Structure
 
-```mermaid
-flowchart TD
-    START([Start]) --> ING
-
-    subgraph ING ["📥 Data Ingestion — Parallel"]
-        WL[S3 Sensor: Listings] --> CL[COPY → raw_listings]
-        WH[S3 Sensor: Hosts]    --> CH[COPY → raw_hosts]
-        WB[S3 Sensor: Bookings] --> CB[COPY → raw_bookings]
-    end
-
-    ING --> TS[Test Sources\ndbt test source:*]
-
-    TS --> TRANS
-
-    subgraph TRANS ["🔄 dbt Transformations — Cosmos"]
-        B[Bronze\nTyping & cleaning]
-        S[Silver\nBusiness rules]
-        G[Gold\nDims + Facts]
-        M[Marts\nOBTs]
-        B --> S --> G --> M
-    end
-
-    TRANS --> SNAP
-
-    subgraph SNAP ["📸 Snapshots — SCD Type 2"]
-        SL[snapshot_listings]
-        SH[snapshot_hosts]
-        SB[snapshot_bookings]
-    end
-
-    SNAP --> DT[Test Models\ndbt test exclude source:*]
-    DT --> GFT[Get Failed Task]
-
-    GFT -->|all success| SUCCESS[Success Email]
-    GFT -->|one failed|  FAILURE[Failure Email]
-
-    SUCCESS --> END([End])
-    FAILURE --> END
+```
+airbnb-elt/
+│
+├── dags/
+│   └── airbnb_elt_pipeline.py      # Main Airflow DAG
+│
+├── dbt/
+│   └── airbnb-analytics/           # dbt project
+│       ├── models/
+│       │   ├── bronze/             # Raw → typed & cleaned
+│       │   ├── silver/             # Business rules applied
+│       │   ├── gold/               # Dims + Facts (star schema)
+│       │   └── marts/              # OBTs for downstream tools
+│       ├── snapshots/              # SCD Type 2 snapshots
+│       ├── tests/                  # Custom data tests
+│       └── dbt_project.yml
+│
+├── docs/
+│   └── pipeline_diagram.png        # Architecture diagram
+│
+├── .env.example                    # Environment variable template
+├── .gitignore
+├── Dockerfile                      # Custom Airflow image
+├── docker-compose.yml              # Full stack setup
+├── pyproject.toml                  # Python dependencies
+└── README.md
 ```
 
 ---
 
-## Important-Directories
-* `dags/`: Contains the main Airflow DAG — `airbnb_elt_pipeline.py`.
-* `dbt/airbnb-analytics/models/bronze/`: Raw typing and cleaning models.
-* `dbt/airbnb-analytics/models/silver/`: Business logic and deduplication models.
-* `dbt/airbnb-analytics/models/gold/`: Star schema — dimension and fact tables.
-* `dbt/airbnb-analytics/models/marts/`: One Big Tables for BI consumption.
-* `dbt/airbnb-analytics/snapshots/`: SCD Type 2 snapshot definitions.
-* `dbt/airbnb-analytics/tests/`: Custom data quality tests.
-* `Dockerfile`: Custom Airflow image with dbt and Cosmos pre-installed.
-* `docker-compose.yml`: Full local stack — Airflow, PostgreSQL, Redis.
-* `.env.example`: Template for all required environment variables.
+## 🔄 Pipeline Flow
 
 ---
 
@@ -162,22 +140,3 @@ Go to **Admin → Connections** and add:
 **6. Trigger the Pipeline:**
 
 Find `airbnb_elt_pipeline` in the DAGs list → click ▶️ **Trigger DAG**
-
-**7. Run dbt Locally (Optional):**
-```bash
-cd dbt/airbnb-analytics
-dbt deps
-dbt debug
-dbt run
-dbt test
-dbt snapshot
-```
-
----
-
-## Notes
-* The Cosmos `DbtTaskGroup` does not natively support snapshots — `DbtSnapshotLocalOperator` is used directly per snapshot file instead.
-* Source tests (`dbt test source:*`) run before transformations to catch bad data early. Model tests (`dbt test exclude:source:*`) run after all layers are built.
-* `{{ ti.task_id }}` in Airflow's `EmailOperator` returns the email task's own ID, not the failed task. A custom `@task` inspects `dag_run.get_task_instances()` to find the actual failed task and passes it via XCom.
-* The S3KeySensor uses `mode='reschedule'` instead of `mode='poke'` to free up worker slots while waiting for files.
-* Raw files are loaded using Snowflake's `COPY INTO` with explicit column casting directly in the `SELECT` clause for type safety.
