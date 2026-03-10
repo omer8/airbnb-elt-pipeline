@@ -67,7 +67,7 @@ airbnb-elt/
 │       └── dbt_project.yml
 │
 ├── docs/
-│   └── pipeline_diagram.png        # Architecture diagram
+│   └── pipeline_dag.png            # Architecture diagram
 │
 ├── .env.example                    # Environment variable template
 ├── .gitignore
