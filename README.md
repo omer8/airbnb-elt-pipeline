@@ -22,22 +22,22 @@
   ┌─────────────────┐      ┌──────────────────────────────────────────────────┐
   │   Source Data   │      │                  SNOWFLAKE                       │
   │                 │      │                                                  │
-  │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
-  │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │  │
-  │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│  │
-  │                 │      │  │Type cast │  │ Biz rules│  │  Dims + Facts │  │
-  │  Amazon S3      │      │  │Null clean│  │ Dedup    │  │               │  │
+  │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
+  │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │   │
+  │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│   │
+  │                 │      │  │Type cast │  │ Biz rules│  │  Dims + Facts │   │
+  │  Amazon S3      │      │  │Null clean│  │ Dedup    │  │               │   │
   └─────────────────┘      │  │Timestamps│  │Incremental│  └───────┬───────┘  │
-         │                 │  └──────────┘  └──────────┘          │          │
+         │                 │  └──────────┘  └──────────┘          │           │
          │                 │       │                               │          │
-         │  COPY INTO      │  ┌────▼─────────────────┐   ┌────────▼───────┐  │
-         │  (parallel)     │  │  SCD TYPE 2 SNAPSHOTS│   │    MARTS       │  │
-         │                 │  │                      │   │  (OBTs for BI) │  │
-  ┌──────▼──────┐          │  │  listings_snapshot   │   │                │  │
-  │ S3KeySensor │          │  │  hosts_snapshot      │   │  mart_listings │  │
-  │  (trigger)  │          │  │  bookings_snapshot   │   │  mart_hosts    │  │
-  └─────────────┘          │  └──────────────────────┘   │  mart_bookings │  │
-                           │                             └────────────────┘  │
+         │  COPY INTO      │  ┌────▼─────────────────┐   ┌────────▼───────┐   │
+         │  (parallel)     │  │  SCD TYPE 2 SNAPSHOTS│   │    MARTS       │   │
+         │                 │  │                      │   │  (OBTs for BI) │   │
+  ┌──────▼──────┐          │  │  listings_snapshot   │   │                │   │
+  │ S3KeySensor │          │  │  hosts_snapshot      │   │  mart_listings │   │
+  │  (trigger)  │          │  │  bookings_snapshot   │   │  mart_hosts    │   │
+  └─────────────┘          │  └──────────────────────┘   │  mart_bookings │   │
+                           │                             └────────────────┘   │
                            └──────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────────────┐
