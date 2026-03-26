@@ -14,7 +14,7 @@
 
 ## 📐 Architecture
 
-![Alt Text](https://drive.google.com/file/d/1YNRigzXA4j_pZFeJoLRIyxyjG4ytMfv5/view?usp=sharing)
+      ![Airbnb ELT Architecture](docs/airbnb-flow.png)
 
 ---
 
