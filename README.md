@@ -25,18 +25,18 @@
   │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
   │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │   │
   │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│   │
-  │                 │      │  │Type cast │  │ Biz rules│  │  Dims + Facts │   │
-  │  Amazon S3      │      │  │Null clean│  │ Dedup    │  │               │   │
-  └─────────────────┘      │  │Timestamps│  │Incremental│  └───────┬───────┘  │
+  │                 │      │  │Type cast │  │          │  │  Dims + Facts │   │
+  │  Amazon S3      │      │  │Null clean│  │          │  │               │   │
+  └─────────────────┘      │  │Timestamps│  │          │  └───────┬───────┘   │
          │                 │  └──────────┘  └──────────┘          │           │
-         │                 │       │                               │          │
-         │  COPY INTO      │  ┌────▼─────────────────┐   ┌────────▼───────┐   │
+         │                 │                       │              │           │
+         │  COPY INTO      │  ┌────────────────────▼─┐   ┌────────▼───────┐   │
          │  (parallel)     │  │  SCD TYPE 2 SNAPSHOTS│   │    MARTS       │   │
          │                 │  │                      │   │  (OBTs for BI) │   │
   ┌──────▼──────┐          │  │  listings_snapshot   │   │                │   │
-  │ S3KeySensor │          │  │  hosts_snapshot      │   │  mart_listings │   │
-  │  (trigger)  │          │  │  bookings_snapshot   │   │  mart_hosts    │   │
-  └─────────────┘          │  └──────────────────────┘   │  mart_bookings │   │
+  │ S3KeySensor │          │  │  hosts_snapshot      │   │                │   │
+  │  (trigger)  │          │  │  bookings_snapshot   │   │                │   │
+  └─────────────┘          │  └──────────────────────┘   │                │   │
                            │                             └────────────────┘   │
                            └──────────────────────────────────────────────────┘
 
