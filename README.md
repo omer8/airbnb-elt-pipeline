@@ -14,44 +14,7 @@
 
 ## 📐 Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              ELT Pipeline Overview                           │
-└──────────────────────────────────────────────────────────────────────────────┘
-
-  ┌─────────────────┐      ┌──────────────────────────────────────────────────┐
-  │   Source Data   │      │                  SNOWFLAKE                       │
-  │                 │      │                                                  │
-  │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
-  │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │   │
-  │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│   │
-  │                 │      │  │Type cast │  │ data     │  │  Dims + Facts │   │
-  │  Amazon S3      │      │  │Null clean│  │ transform│  │               │   │
-  └─────────────────┘      │  │Timestamps│  │ ation    │  └───────┬───────┘   │
-         │                 │  └──────────┘  └──────────┘          │           │
-         │                 │                       │              │           │
-         │  COPY INTO      │  ┌────────────────────▼─┐   ┌────────▼───────┐   │
-         │  (parallel)     │  │  SCD TYPE 2 SNAPSHOTS│   │    MARTS       │   │
-         │                 │  │                      │   │  (OBTs for BI) │   │
-  ┌──────▼──────┐          │  │  listings_snapshot   │   │                │   │
-  │ S3KeySensor │          │  │  hosts_snapshot      │   │                │   │
-  │  (trigger)  │          │  │  bookings_snapshot   │   │                │   │
-  └─────────────┘          │  └──────────────────────┘   │                │   │
-                           │                             └────────────────┘   │
-                           └──────────────────────────────────────────────────┘
-
-  ┌──────────────────────────────────────────────────────────────────────────┐
-  │                          ORCHESTRATION LAYER                             │
-  │                                                                          │
-  │   Apache Airflow 3 (TaskFlow API)  +  Astronomer Cosmos                  │
-  │   ├── S3KeySensor → COPY INTO tasks (parallel)                           │
-  │   ├── dbt source tests → Bronze → Silver → Snapshots → Gold → Marts      │
-  │   ├── dbt tests (post-Gold)                                              │
-  │   └── Email alerts on success / failure (task-level identification)      │
-  │                                                                          │
-  │   Workers: Celery + Redis  │  Metadata DB: PostgreSQL  │  UI: :8080      │
-  └──────────────────────────────────────────────────────────────────────────┘
-```
+![Alt Text](https://drive.google.com/file/d/1YNRigzXA4j_pZFeJoLRIyxyjG4ytMfv5/view?usp=sharing)
 
 ---
 
