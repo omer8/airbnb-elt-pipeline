@@ -14,7 +14,9 @@
 
 ## 📐 Architecture
 
-      ![Airbnb ELT Architecture](docs/airbnb-flow.png)
+<p align="center">
+  <img src="docs/airbnb-flow.png" alt="Airbnb ELT Architecture" width="900">
+</p>
 
 ---
 
