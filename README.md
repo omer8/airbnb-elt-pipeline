@@ -275,14 +275,6 @@ Parallel task execution across the three `COPY INTO` ingestion tasks and distrib
 - [ ] Publish **dbt docs** to GitHub Pages (`dbt docs generate && dbt docs serve`)
 - [ ] Add a **BI layer** container (Metabase or Apache Superset) to the Compose stack
 - [ ] Replace S3 file polling with **S3 event notifications → SQS → Airflow trigger** for near-real-time ingestion
-- [ ] Parameterize DAG runs with city as an **Airflow Variable** to support multi-city ingestion
-- [ ] Add **dbt exposures** to document downstream BI dashboards consuming the mart models
-
----
-
-## 📚 Data Source
-
-Raw data sourced from [Inside Airbnb](http://insideairbnb.com/get-the-data/) — an independent project publishing Airbnb listing data for cities worldwide.
 
 ---
 
