@@ -1,142 +1,291 @@
 # 🏠 Airbnb ELT Pipeline
 
-An end-to-end ELT pipeline that ingests Airbnb raw data from **Amazon S3** into **Snowflake**, transforms it through a medallion architecture using **dbt**, and orchestrates everything with **Apache Airflow** + **Astronomer Cosmos**.
+> Production-grade ELT pipeline ingesting Airbnb data from **Amazon S3** into **Snowflake**, transformed across a full **Medallion architecture** with **dbt**, and orchestrated end-to-end by **Apache Airflow 3** + **Astronomer Cosmos**.
 
----
-## Table of Contents
-* [Tech Stack](#tech-stack)
-* [Architecture](#architecture)
-* [Project Structure](#project-structure)
-* [Pipeline Flow](#pipeline-flow)
-* [Setup Instructions](#setup-instructions)
-* [Steps to Run](#steps-to-run)
----
-
-## Tech-Stack
-* **Apache Airflow 3**: Orchestrates and schedules the entire ELT pipeline using the TaskFlow API with decorator syntax.
-* **Astronomer Cosmos**: Integrates dbt with Airflow, rendering each dbt model as an individual Airflow task for full visibility and per-model retries.
-* **dbt (Snowflake adapter)**: Handles all data transformations across the Medallion layers — Bronze, Silver, Gold, and Marts — including testing and SCD Type 2 snapshots.
-* **Snowflake**: Cloud data warehouse used for storing and computing all pipeline layers from raw staging to final marts.
-* **Amazon S3**: Stores raw Airbnb CSV files (listings, hosts, bookings) that are ingested into Snowflake via `COPY INTO`.
-* **Docker & Docker Compose**: Containerizes the full Airflow stack (API server, scheduler, worker, triggerer, DAG processor) for local development.
-* **PostgreSQL**: Used as the Airflow metadata database.
-* **Redis**: Acts as the Celery message broker for distributed task execution.
-* **SMTP / Gmail**: Sends email notifications on pipeline success or failure, including the exact failed task name.
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![Airflow](https://img.shields.io/badge/Apache_Airflow-3.x-017CEE?style=flat&logo=apache-airflow&logoColor=white)](https://airflow.apache.org)
+[![dbt](https://img.shields.io/badge/dbt-Snowflake-FF694B?style=flat&logo=dbt&logoColor=white)](https://getdbt.com)
+[![Snowflake](https://img.shields.io/badge/Snowflake-Cloud_DW-29B5E8?style=flat&logo=snowflake&logoColor=white)](https://snowflake.com)
+[![AWS S3](https://img.shields.io/badge/AWS-S3-FF9900?style=flat&logo=amazon-s3&logoColor=white)](https://aws.amazon.com/s3/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## Architecture
+## 📐 Architecture
 
-**Data Ingestion**
-1. Raw Airbnb CSV files (listings, hosts, bookings) land in Amazon S3.
-2. S3KeySensor detects new files and triggers the ingestion tasks.
-3. Snowflake `COPY INTO` loads the raw data into staging tables in parallel.
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              ELT Pipeline Overview                           │
+└──────────────────────────────────────────────────────────────────────────────┘
 
-**Transformation**
-1. dbt runs source tests to validate raw data before any transformation begins.
-2. Bronze layer applies type casting, null handling, and timestamp normalization.
-3. Silver layer applies business rules, deduplication, and incremental loads.
-4. SCD Type 2 Snapshots capture historical changes for listings, hosts, and bookings.
-5. Gold layer builds a star schema with dimension and fact tables.
-6. Marts layer produces One Big Tables (OBTs) optimized for BI tools.
+  ┌─────────────────┐      ┌──────────────────────────────────────────────────┐
+  │   Source Data   │      │                  SNOWFLAKE                       │
+  │                 │      │                                                  │
+  │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
+  │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │  │
+  │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│  │
+  │                 │      │  │Type cast │  │ Biz rules│  │  Dims + Facts │  │
+  │  Amazon S3      │      │  │Null clean│  │ Dedup    │  │               │  │
+  └─────────────────┘      │  │Timestamps│  │Incremental│  └───────┬───────┘  │
+         │                 │  └──────────┘  └──────────┘          │          │
+         │                 │       │                               │          │
+         │  COPY INTO      │  ┌────▼─────────────────┐   ┌────────▼───────┐  │
+         │  (parallel)     │  │  SCD TYPE 2 SNAPSHOTS│   │    MARTS       │  │
+         │                 │  │                      │   │  (OBTs for BI) │  │
+  ┌──────▼──────┐          │  │  listings_snapshot   │   │                │  │
+  │ S3KeySensor │          │  │  hosts_snapshot      │   │  mart_listings │  │
+  │  (trigger)  │          │  │  bookings_snapshot   │   │  mart_hosts    │  │
+  └─────────────┘          │  └──────────────────────┘   │  mart_bookings │  │
+                           │                             └────────────────┘  │
+                           └──────────────────────────────────────────────────┘
 
-**Data Quality**
-1. dbt tests run against all transformed models after the Gold/Marts layers complete.
-2. A custom task inspects all Airflow task instances to identify the exact failed task.
-3. Email alerts are sent on success or failure with full run details and log URLs.
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                          ORCHESTRATION LAYER                             │
+  │                                                                          │
+  │   Apache Airflow 3 (TaskFlow API)  +  Astronomer Cosmos                  │
+  │   ├── S3KeySensor → COPY INTO tasks (parallel)                           │
+  │   ├── dbt source tests → Bronze → Silver → Snapshots → Gold → Marts      │
+  │   ├── dbt tests (post-Gold)                                              │
+  │   └── Email alerts on success / failure (task-level identification)      │
+  │                                                                          │
+  │   Workers: Celery + Redis  │  Metadata DB: PostgreSQL  │  UI: :8080      │
+  └──────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Project Structure
+## 🛠️ Tech Stack
+
+| Layer | Tool | Role |
+|-------|------|------|
+| Orchestration | Apache Airflow 3 | Schedules and runs the full pipeline via TaskFlow API |
+| dbt Integration | Astronomer Cosmos | Renders each dbt model as an individual Airflow task — full DAG visibility + per-model retries |
+| Transformation | dbt (Snowflake adapter) | Medallion layers, SCD Type 2 snapshots, data tests |
+| Data Warehouse | Snowflake | Stores and computes all pipeline layers |
+| Object Storage | Amazon S3 | Landing zone for raw Airbnb CSV files |
+| Task Queue | Celery + Redis | Distributed task execution across Airflow workers |
+| Containerization | Docker + Compose | Full local stack: API server, scheduler, worker, triggerer, DAG processor |
+| Metadata DB | PostgreSQL | Airflow internal state |
+| Alerting | Gmail SMTP | Email notifications on success/failure with failed task name + log URL |
+
+---
+
+## 🗂️ Project Structure
 
 ```
 airbnb-elt/
-│
 ├── dags/
-│   └── airbnb_elt_pipeline.py      # Main Airflow DAG
+│   └── airbnb_elt_pipeline.py       # Main Airflow DAG (TaskFlow API)
 │
 ├── dbt/
-│   └── airbnb-analytics/           # dbt project
+│   └── airbnb-analytics/
 │       ├── models/
-│       │   ├── bronze/             # Raw → typed & cleaned
-│       │   ├── silver/             # Business rules applied
-│       │   ├── gold/               # Dims + Facts (star schema)
-│       │   └── marts/              # OBTs for downstream tools
-│       ├── snapshots/              # SCD Type 2 snapshots
-│       ├── tests/                  # Custom data tests
+│       │   ├── bronze/              # Raw → typed, cleaned, normalized
+│       │   ├── silver/              # Business rules, dedup, incremental loads
+│       │   ├── gold/                # Star schema: dims + facts
+│       │   └── marts/               # One Big Tables (OBTs) for BI tools
+│       ├── snapshots/               # SCD Type 2 (listings, hosts, bookings)
+│       ├── tests/                   # Custom dbt data tests
 │       └── dbt_project.yml
 │
 ├── docs/
-│   └── pipeline_dag.png            # Architecture diagram
+│   └── pipeline_dag.png
 │
-├── .env.example                    # Environment variable template
+├── .env.example
 ├── .gitignore
-├── Dockerfile                      # Custom Airflow image
-├── docker-compose.yml              # Full stack setup
-├── pyproject.toml                  # Python dependencies
+├── Dockerfile                       # Custom Airflow image
+├── docker-compose.yml               # Full stack: Airflow + Postgres + Redis
+├── pyproject.toml
 └── README.md
 ```
 
 ---
 
-## Pipeline Flow
+## 🔄 Pipeline Flow
 
----
-
-## Setup-Instructions
-* Ensure Docker and Docker Compose are installed.
-* Have a Snowflake account with a database, warehouse, and role ready.
-* Have an AWS account with an S3 bucket containing the raw CSV files.
-* For email notifications, create a Gmail App Password from [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
-
----
-
-## Steps-to-Run
-
-**1. Clone the Repository:**
-```bash
-git clone https://github.com/your-username/airbnb-elt.git
-cd airbnb-elt
+```
+S3KeySensor (listings / hosts / bookings)
+      │
+      ▼
+COPY INTO Snowflake staging  ──────────────────────── (parallel, 3 tables)
+      │
+      ▼
+dbt source tests  ◀── fail-fast: pipeline halts if raw data is invalid
+      │
+      ▼
+Bronze models  ──  type casting · null handling · timestamp normalization
+      │
+      ▼
+Silver models  ──  business rules · deduplication · incremental strategy
+      │
+      ├──▶  SCD Type 2 Snapshots  (listings / hosts / bookings history)
+      │
+      ▼
+Gold models  ──  star schema: dim_listing · dim_host · dim_date · fct_bookings
+      │
+      ▼
+Marts  ──  One Big Tables optimized for BI consumption
+      │
+      ▼
+dbt tests (post-Gold)  ──  uniqueness · not-null · referential integrity
+      │
+      ▼
+Email alert  ──  success or failure · exact failed task · Airflow log URL
 ```
 
-**2. Set Up Environment Variables:**
+---
+
+## 📊 dbt Model Layers
+
+### Bronze — Raw → Cleaned
+Type casting, null handling, timestamp normalization. No business logic applied.
+
+| Model | Source | Key Transforms |
+|-------|--------|---------------|
+| `bronze_listings` | `raw.listings` | Price to numeric, trim whitespace, parse dates |
+| `bronze_hosts` | `raw.hosts` | Null coalescing, boolean casting |
+| `bronze_bookings` | `raw.bookings` | Timestamp normalization, status typing |
+
+### Silver — Business Rules Applied
+Incremental loads, deduplication, enrichment.
+
+| Model | Strategy | Description |
+|-------|----------|-------------|
+| `silver_listings` | Incremental | Deduped listings with business-rule validations |
+| `silver_hosts` | Incremental | Host profiles with response rate / acceptance rate parsing |
+| `silver_bookings` | Incremental | Cleaned bookings with referential checks |
+
+### SCD Type 2 Snapshots
+Historical change tracking for slowly changing dimensions.
+
+| Snapshot | Tracks Changes On |
+|----------|-----------------|
+| `listings_snapshot` | Price, availability, minimum nights |
+| `hosts_snapshot` | Superhost status, response rate |
+| `bookings_snapshot` | Booking status changes |
+
+### Gold — Star Schema
+
+| Model | Type | Grain |
+|-------|------|-------|
+| `dim_listing` | Dimension | One row per listing |
+| `dim_host` | Dimension | One row per host |
+| `dim_date` | Dimension | One row per calendar date |
+| `fct_bookings` | Fact | One row per booking event |
+
+### Marts — Analytics-Ready OBTs
+
+| Model | Description |
+|-------|-------------|
+| `mart_listings` | Listings enriched with host info, pricing stats, availability |
+| `mart_hosts` | Host-level performance: occupancy, revenue, review scores |
+| `mart_bookings` | Booking trends, lead time, cancellation rates |
+
+---
+
+## ⚙️ Setup & Run
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Snowflake account (database, warehouse, role configured)
+- AWS account with S3 bucket containing raw CSVs
+- Gmail App Password for SMTP alerts → [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/omer8/airbnb-elt-pipeline.git
+cd airbnb-elt-pipeline
+```
+
+### 2. Configure environment variables
+
 ```bash
 cp .env.example .env
 ```
-Fill in your credentials:
+
 ```env
+# Snowflake
 SNOWFLAKE_ACCOUNT=your_account.region
 SNOWFLAKE_USER=your_user
 SNOWFLAKE_PASSWORD=your_password
+
+# AWS
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 S3_BUCKET=your-s3-bucket-name
+
+# Alerting
 AIRFLOW__SMTP__SMTP_USER=your@gmail.com
 AIRFLOW__SMTP__SMTP_PASSWORD=your_app_password
 ```
 
-**3. Build and Start the Stack:**
+### 3. Build and start the full stack
+
 ```bash
 docker compose up --build
 ```
 
-**4. Open the Airflow UI:**
+This starts: Airflow API server · scheduler · worker · triggerer · DAG processor · PostgreSQL · Redis
+
+### 4. Open the Airflow UI
+
 ```
-URL:      http://localhost:8080
-Username: airflow
-Password: airflow
+http://localhost:8080
+Username: airflow  |  Password: airflow
 ```
 
-**5. Configure Airflow Connections:**
+### 5. Add Airflow Connections
 
-Go to **Admin → Connections** and add:
+Go to **Admin → Connections**:
 
 | Conn ID | Type | Details |
 |---------|------|---------|
 | `snowflake-conn` | Snowflake | Account, user, password, database, warehouse, role |
 | `aws-conn` | Amazon Web Services | Access Key ID + Secret Access Key |
-| `email-conn` | Email (SMTP) | Host: `smtp.gmail.com`, Port: `587` |
+| `email-conn` | Email (SMTP) | Host: `smtp.gmail.com` · Port: `587` |
 
-**6. Trigger the Pipeline:**
+### 6. Trigger the pipeline
 
-Find `airbnb_elt_pipeline` in the DAGs list → click ▶️ **Trigger DAG**
+Find `airbnb_elt_pipeline` in the DAGs list → ▶️ **Trigger DAG**
+
+---
+
+## 🧩 Design Decisions
+
+**Why Astronomer Cosmos instead of a single dbt Airflow operator?**
+Cosmos renders each dbt model as its own Airflow task. This means per-model retries, granular failure visibility in the DAG graph, and no need to re-run the entire dbt project on a single-model failure — a significant operational advantage in production.
+
+**Why SCD Type 2 snapshots?**
+Airbnb listings change frequently — prices shift, superhosts gain and lose status, availability fluctuates. SCD Type 2 preserves the full history of these changes, enabling point-in-time analysis and trend reporting that a `MERGE`-only approach would destroy.
+
+**Why OBTs in the Marts layer?**
+The Gold star schema is normalized and join-heavy. For BI tools and ad-hoc analysts, pre-joining dims and facts into wide mart tables reduces query complexity, improves dashboard performance, and lowers the barrier for non-SQL-native consumers.
+
+**Why Celery + Redis over the LocalExecutor?**
+Parallel task execution across the three `COPY INTO` ingestion tasks and distributed dbt model runs require a proper task queue. Celery with Redis scales horizontally and mirrors a real production Airflow deployment.
+
+---
+
+## 🗺️ Potential Extensions
+
+- [ ] Add **Great Expectations** or **Soda Core** for pre-ingestion data quality checks on raw S3 files
+- [ ] Publish **dbt docs** to GitHub Pages (`dbt docs generate && dbt docs serve`)
+- [ ] Add a **BI layer** container (Metabase or Apache Superset) to the Compose stack
+- [ ] Replace S3 file polling with **S3 event notifications → SQS → Airflow trigger** for near-real-time ingestion
+- [ ] Parameterize DAG runs with city as an **Airflow Variable** to support multi-city ingestion
+- [ ] Add **dbt exposures** to document downstream BI dashboards consuming the mart models
+
+---
+
+## 📚 Data Source
+
+Raw data sourced from [Inside Airbnb](http://insideairbnb.com/get-the-data/) — an independent project publishing Airbnb listing data for cities worldwide.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © [omer8](https://github.com/omer8)
