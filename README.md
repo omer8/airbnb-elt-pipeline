@@ -25,9 +25,9 @@
   │  listings.csv   │      │  ┌──────────┐  ┌──────────┐  ┌───────────────┐   │
   │  hosts.csv      │─────▶│  │  BRONZE  │─▶│  SILVER  │─▶│     GOLD      │   │
   │  bookings.csv   │      │  │          │  │          │  │  (Star Schema)│   │
-  │                 │      │  │Type cast │  │          │  │  Dims + Facts │   │
-  │  Amazon S3      │      │  │Null clean│  │          │  │               │   │
-  └─────────────────┘      │  │Timestamps│  │          │  └───────┬───────┘   │
+  │                 │      │  │Type cast │  │ data     │  │  Dims + Facts │   │
+  │  Amazon S3      │      │  │Null clean│  │ transform│  │               │   │
+  └─────────────────┘      │  │Timestamps│  │ ation    │  └───────┬───────┘   │
          │                 │  └──────────┘  └──────────┘          │           │
          │                 │                       │              │           │
          │  COPY INTO      │  ┌────────────────────▼─┐   ┌────────▼───────┐   │
