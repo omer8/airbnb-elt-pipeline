@@ -141,12 +141,6 @@ Historical change tracking for slowly changing dimensions.
 
 ### Marts — Analytics-Ready OBTs
 
-| Model | Description |
-|-------|-------------|
-| `mart_listings` | Listings enriched with host info, pricing stats, availability |
-| `mart_hosts` | Host-level performance: occupancy, revenue, review scores |
-| `mart_bookings` | Booking trends, lead time, cancellation rates |
-
 ---
 
 ## ⚙️ Setup & Run
